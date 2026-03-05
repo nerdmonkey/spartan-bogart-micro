@@ -1,0 +1,15 @@
+[flake8]
+max-line-length = 88
+exclude =
+    app/exceptions/__init__.py,
+    .git,
+    build,
+    dist,
+    .venv,
+    .serverless,
+    node_modules,
+    .vscode,
+    .pytest_cache,
+    __pycache__
+max-complexity = 10
+ignore = E203,W503
