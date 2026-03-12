@@ -78,15 +78,71 @@ def _test_bothlogger_delegation(monkeypatch):
     from app.services.logging.both import BothLogger
 
     calls = {"file": [], "stream": []}
-    fake_file = _create_fake_file_logger(calls)
-    fake_stream = _create_fake_stream_logger(calls)
 
-    _patch_logger_classes(monkeypatch, fake_file, fake_stream)
 
-    b = BothLogger(service_name="svc", level="INFO")
-    b.info("hello", extra={"password": "x", "foo": "bar"})
+def test_stream_logger_without_colorama():
+    """Test StreamLogger when colorama is not available."""
+    import sys
+    from unittest.mock import patch
 
-    _assert_delegation_worked(calls)
+    # Temporarily hide colorama
+    with patch.dict(sys.modules, {"colorama": None}):
+        # Force reload to test import error path
+        import importlib
+        from app.services.logging import stream
+
+        importlib.reload(stream)
+
+        logger = stream.StreamLogger(service_name="test", level="INFO")
+
+        # Should work without colorama
+        logger.info("test message")
+
+        # Reload again to restore normal state
+        importlib.reload(stream)
+
+
+def test_stream_logger_warning_method():
+    """Test StreamLogger.warning() method."""
+    from app.services.logging.stream import StreamLogger
+
+    logger = StreamLogger(service_name="test", level="DEBUG")
+
+    # Should not raise an error
+    logger.warning("warning message", extra={"type": "test"})
+
+
+def test_stream_logger_error_method():
+    """Test StreamLogger.error() method."""
+    from app.services.logging.stream import StreamLogger
+
+    logger = StreamLogger(service_name="test", level="DEBUG")
+
+    # Should not raise an error
+    logger.error("error message", extra={"code": 500})
+
+
+def test_stream_logger_debug_method():
+    """Test StreamLogger.debug() method."""
+    from app.services.logging.stream import StreamLogger
+
+    logger = StreamLogger(service_name="test", level="DEBUG")
+
+    # Should not raise an error
+    logger.debug("debug message", extra={"detail": "info"})
+
+
+def test_stream_logger_exception_method():
+    """Test StreamLogger.exception() method."""
+    from app.services.logging.stream import StreamLogger
+
+    logger = StreamLogger(service_name="test", level="ERROR")
+
+    try:
+        raise ValueError("test error")
+    except ValueError:
+        # Should not raise an error and should handle exception
+        logger.exception("caught exception", extra={"error_type": "ValueError"})
 
 
 def _create_fake_file_logger(calls):

@@ -200,3 +200,212 @@ def test_file_logger_json_schema_and_pii_cases(tmp_path, monkeypatch):
     # Nested sensitive field inside dict is not automatically redacted
     # by current implementation
     assert entry.get("nested") == {"token": "x"}
+
+
+def test_file_logger_existing_directory(tmp_path, monkeypatch):
+    """Test FileLogger with existing log directory."""
+    from app.services.logging.file import FileLogger
+
+    monkeypatch.setattr(
+        "app.services.logging.file.env",
+        lambda k, d=None: {"APP_ENVIRONMENT": "test", "APP_VERSION": "1.0"}.get(k, d),
+    )
+
+    # Create directory first
+    log_dir = tmp_path / "logs"
+    log_dir.mkdir()
+
+    # Should work even when directory already exists
+    fl = FileLogger(
+        service_name="svc", level="INFO", log_dir=str(log_dir), sample_rate=1.0
+    )
+
+    fl.info("test message")
+
+    for h in fl.logger.handlers:
+        try:
+            h.flush()
+        except Exception:
+            pass
+
+    log_file = log_dir / "svc.log"
+    assert log_file.exists()
+
+
+def test_file_logger_error_method(tmp_path, monkeypatch):
+    """Test FileLogger.error() method."""
+    from app.services.logging.file import FileLogger
+
+    monkeypatch.setattr(
+        "app.services.logging.file.env",
+        lambda k, d=None: {"APP_ENVIRONMENT": "test", "APP_VERSION": "1.0"}.get(k, d),
+    )
+
+    fl = FileLogger(
+        service_name="svc", level="DEBUG", log_dir=str(tmp_path), sample_rate=1.0
+    )
+
+    fl.error("error message", extra={"code": 500})
+
+    for h in fl.logger.handlers:
+        try:
+            h.flush()
+        except Exception:
+            pass
+
+    log_file = tmp_path / "svc.log"
+    text = log_file.read_text()
+    lines = [line for line in text.splitlines() if line.strip()]
+    entry = json.loads(lines[-1])
+
+    assert entry["level"] == "ERROR"
+    assert entry["message"] == "error message"
+
+
+def test_file_logger_warning_method(tmp_path, monkeypatch):
+    """Test FileLogger.warning() method."""
+    from app.services.logging.file import FileLogger
+
+    monkeypatch.setattr(
+        "app.services.logging.file.env",
+        lambda k, d=None: {"APP_ENVIRONMENT": "test", "APP_VERSION": "1.0"}.get(k, d),
+    )
+
+    fl = FileLogger(
+        service_name="svc", level="DEBUG", log_dir=str(tmp_path), sample_rate=1.0
+    )
+
+    fl.warning("warning message", extra={"type": "deprecation"})
+
+    for h in fl.logger.handlers:
+        try:
+            h.flush()
+        except Exception:
+            pass
+
+    log_file = tmp_path / "svc.log"
+    text = log_file.read_text()
+    lines = [line for line in text.splitlines() if line.strip()]
+    entry = json.loads(lines[-1])
+
+    assert entry["level"] == "WARNING"
+    assert entry["message"] == "warning message"
+
+
+def test_file_logger_debug_method(tmp_path, monkeypatch):
+    """Test FileLogger.debug() method."""
+    from app.services.logging.file import FileLogger
+
+    monkeypatch.setattr(
+        "app.services.logging.file.env",
+        lambda k, d=None: {"APP_ENVIRONMENT": "test", "APP_VERSION": "1.0"}.get(k, d),
+    )
+
+    fl = FileLogger(
+        service_name="svc", level="DEBUG", log_dir=str(tmp_path), sample_rate=1.0
+    )
+
+    fl.debug("debug message", extra={"var": "value"})
+
+    for h in fl.logger.handlers:
+        try:
+            h.flush()
+        except Exception:
+            pass
+
+    log_file = tmp_path / "svc.log"
+    text = log_file.read_text()
+    lines = [line for line in text.splitlines() if line.strip()]
+    entry = json.loads(lines[-1])
+
+    assert entry["level"] == "DEBUG"
+    assert entry["message"] == "debug message"
+
+
+def test_file_logger_critical_method(tmp_path, monkeypatch):
+    """Test FileLogger.critical() method."""
+    from app.services.logging.file import FileLogger
+
+    monkeypatch.setattr(
+        "app.services.logging.file.env",
+        lambda k, d=None: {"APP_ENVIRONMENT": "test", "APP_VERSION": "1.0"}.get(k, d),
+    )
+
+    fl = FileLogger(
+        service_name="svc", level="DEBUG", log_dir=str(tmp_path), sample_rate=1.0
+    )
+
+    fl.critical("critical message", extra={"severity": "high"})
+
+    for h in fl.logger.handlers:
+        try:
+            h.flush()
+        except Exception:
+            pass
+
+    log_file = tmp_path / "svc.log"
+    text = log_file.read_text()
+    lines = [line for line in text.splitlines() if line.strip()]
+    entry = json.loads(lines[-1])
+
+    assert entry["level"] == "CRITICAL"
+    assert entry["message"] == "critical message"
+
+
+def test_file_logger_inject_lambda_context(tmp_path, monkeypatch):
+    """Test FileLogger.inject_lambda_context() decorator."""
+    from app.services.logging.file import FileLogger
+
+    monkeypatch.setattr(
+        "app.services.logging.file.env",
+        lambda k, d=None: {"APP_ENVIRONMENT": "test", "APP_VERSION": "1.0"}.get(k, d),
+    )
+
+    fl = FileLogger(
+        service_name="svc", level="INFO", log_dir=str(tmp_path), sample_rate=1.0
+    )
+
+    @fl.inject_lambda_context
+    def handler(event, context):
+        return {"result": "success"}
+
+    result = handler({"test": "event"}, {"test": "context"})
+
+    assert result == {"result": "success"}
+
+
+def test_json_formatter_fallback_location_with_exception(tmp_path, monkeypatch):
+    """Test _JsonFormatter._get_fallback_location handles exceptions."""
+    import logging
+    from app.services.logging.file import _JsonFormatter
+
+    formatter = _JsonFormatter("test-service")
+
+    # Create a mock record that will trigger ValueError/OSError in os.path.relpath
+    record = logging.LogRecord(
+        name="test",
+        level=logging.INFO,
+        pathname="/non/existent/path/file.py",
+        lineno=42,
+        msg="test",
+        args=(),
+        exc_info=None,
+    )
+
+    # Mock os.path.relpath to raise an exception
+    import os
+
+    original_relpath = os.path.relpath
+
+    def mock_relpath(path, start):
+        if "/non/existent/" in path:
+            raise ValueError("Cannot compute relative path")
+        return original_relpath(path, start)
+
+    monkeypatch.setattr("os.path.relpath", mock_relpath)
+
+    rel_path, lineno = formatter._get_fallback_location(record)
+
+    # Should fall back to basename
+    assert rel_path == "file.py"
+    assert lineno == 42
