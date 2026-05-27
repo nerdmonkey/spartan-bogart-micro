@@ -1,18 +1,16 @@
 <p align="center"><img src="docs/ssf_banner.png" alt="Social Card of Spartan"></p>
 
-# Spartan Serverless Framework
+# Bogart Micro — Spartan for AWS (Lightweight)
 
 ## About
-Spartan Serverless Framework—"the Swiss Army knife for serverless development"—is a powerful scaffold that simplifies the creation of serverless applications on AWS. It streamlines your development process and ensures code consistency, allowing you to build scalable and efficient applications on AWS with ease.
+Bogart Micro is the lightweight AWS variant of the Spartan Serverless Framework, optimized for simple Lambda functions and microservices. It streamlines your development process with a minimal footprint while ensuring code consistency on AWS.
 
-#### Spartan Serverless Framework is versatile and can be used to efficiently develop:
+#### Bogart Micro is optimized for:
 - RESTful API
 - Workflows or State Machines
 - Small or Medium-sized ETL Pipelines
 - Containerized Microservices
 - Agentic AI (Coming Soon)
-
-Fully tested in AWS, Spartan Serverless Framework is also compatible with other cloud providers like Azure and GCP, making it a flexible choice for a wide range of serverless applications.
 
 
 ## Installation
